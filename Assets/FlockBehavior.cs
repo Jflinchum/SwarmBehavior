@@ -43,7 +43,7 @@ public class FlockBehavior : MonoBehaviour {
 
 			if(neighbors[i].tag == "Flock"){
 				Vector3 flockVector = neighbors[i].transform.position - transform.position;
-				float flockDist = flockVector.magnitude;
+				float flockDist = Vector3.Distance(neighbors[i].transform.position, transform.position);
 
 				//Seperation update
 				if(flockDist <= sepDist){
@@ -55,9 +55,8 @@ public class FlockBehavior : MonoBehaviour {
 					alignment += neighbors[i].transform.forward;
 				}
 				//Cohesion update
-				if(flockDist <= cohDist && flockDist > alignDist){
-					cohNeighbors += 1;
-					cohesionPos += neighbors[i].transform.position;
+				if(flockDist <= cohDist){
+					rbody.AddForce(flockVector.normalized*cohForce);
 				}
 			}
 			//For other objects to go around
