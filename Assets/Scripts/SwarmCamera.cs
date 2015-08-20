@@ -16,7 +16,7 @@ public class SwarmCamera : MonoBehaviour {
 	private float xRotation;
 	private float yRotation;
 
-	private GameObject[] targets;
+	public GameObject[] targets;
 	private int index = 0;
 
 	// Use this for initialization
@@ -46,7 +46,6 @@ public class SwarmCamera : MonoBehaviour {
 			yRotation -= Input.GetAxis ("Mouse Y") * ySensitivity * 0.02f;
 
 			Quaternion rotation = Quaternion.Euler(yRotation, xRotation, 0);
-
 			distance = Mathf.Clamp(distance - Input.GetAxis("Mouse ScrollWheel")*5, minDist, maxDist);
 
 			Vector3 negDistance = new Vector3(0.0f, 0.0f, -distance);

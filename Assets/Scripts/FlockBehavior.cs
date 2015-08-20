@@ -15,12 +15,16 @@ public class FlockBehavior : MonoBehaviour {
 	public float cohForce;
 	public float alignForce;
 	public float sepForce;
+	public float wayPointForce;
 
 	public float altitude;
 
 	private Rigidbody rbody;
 	private bool drop = false;
 	private bool avoiding = false;
+	
+	public Queue wayPoints = new Queue();
+	private GameObject currWayPoint = null;
 	// Use this for initialization
 	void Start () {
 		rbody = transform.GetComponent<Rigidbody> ();
@@ -82,16 +86,16 @@ public class FlockBehavior : MonoBehaviour {
 						rbody.AddForce (avoidDirect.normalized * avoidForce);
 					avoiding = true;
 				}
-				//For other objects to go around
+				//Going around untagged objects
 				else {
-					if(Physics.CapsuleCast(transform.position, transform.position + (transform.forward * avoidDist), GetComponent<SphereCollider>().radius + (GetComponent<SphereCollider>().radius/2), transform.forward)){
+					if(Physics.CheckCapsule(transform.position, transform.position + transform.forward*avoidDist, 2*GetComponent<SphereCollider>().radius + avoidDist)){
 						Vector3 closestPos = neighbors[i].bounds.ClosestPoint(transform.position);
 						Vector3 toCenter = neighbors[i].transform.position - transform.position;
 						Vector3 direction = toCenter - closestPos;
 						if(Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
-							direction = new Vector3(-direction.x - (Mathf.Sign (direction.x) * neighbors[i].bounds.size.x) , direction.y, direction.z).normalized * avoidForce;
+							direction = new Vector3(-direction.x - (Mathf.Sign (direction.x) * (neighbors[i].bounds.size.x + avoidDist)), direction.y, direction.z).normalized * avoidForce;
 						else
-							direction = new Vector3(direction.x, -direction.y - ( Mathf.Sign (direction.y) * neighbors[i].bounds.size.y), direction.z).normalized * avoidForce;
+							direction = new Vector3(direction.x, -direction.y - ( Mathf.Sign (direction.y) * (neighbors[i].bounds.size.y + avoidDist)), direction.z).normalized * avoidForce;
 						avoiding = true;
 						rbody.AddForce(direction);
 					}
@@ -104,9 +108,20 @@ public class FlockBehavior : MonoBehaviour {
 				Vector3 direction = (cohesionPos/cohNeighbors)-transform.position;
 				rbody.AddForce (direction.normalized * cohForce);
 			}
+
+			//Setting the current waypoint
+			if(wayPoints.Count > 0 && currWayPoint == null){
+				currWayPoint = (GameObject)wayPoints.Dequeue();
+			}
+			//Going towards waypoint
+			if(currWayPoint != null){
+				rbody.AddForce((currWayPoint.transform.position - transform.position).normalized * wayPointForce);
+				if(Vector3.Distance(currWayPoint.transform.position, transform.position) < 20)
+					Destroy(currWayPoint);
+			}
+
 		}
 	}
-
 	void OnCollisionEnter(Collision collision){
 		if (collision.transform.tag != "Flock") {
 			drop = true;
