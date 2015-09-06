@@ -17,13 +17,16 @@ public class FlockBehavior : MonoBehaviour {
 	public float sepForce;
 	public float wayPointForce;
 
+	public float maxDelay = 0.5f;
+	private float currDelay = 0.0f;
+
 	public float altitude;
 
 	private Rigidbody rbody;
 	private bool drop = false;
 	private bool avoiding = false;
 	private bool inPlace = false;
-	
+
 	public Queue wayPoints = new Queue();
 	private GameObject currWayPoint = null;
 
@@ -31,8 +34,9 @@ public class FlockBehavior : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		rbody = transform.GetComponent<Rigidbody> ();
-
 		rbody.AddForce(new Vector3(Random.Range (-100, 100), Random.Range (-100,100), maxSpeed*10));
+
+		maxDelay = Random.Range (0, maxDelay);
 	}
 	
 	// Update is called once per frame
@@ -45,13 +49,15 @@ public class FlockBehavior : MonoBehaviour {
 			if(Input.GetKeyDown("space")){
 				inPlace = !inPlace;
 				if(inPlace){
-//					rbody.velocity = new Vector3(0,0,0);
+					//rbody.velocity = new Vector3(0,0,0);
 					cohForce *= 3;
 				}
 				else
 					cohForce /= 3;
 			}
-			
+
+			//Incrementing the delay
+			currDelay += 0.1f * Time.deltaTime;
 
 			//Speed limiter
 			if (rbody.velocity.magnitude >= maxSpeed) {
@@ -125,6 +131,10 @@ public class FlockBehavior : MonoBehaviour {
 			if(cohNeighbors != 0 || inPlace){
 				Vector3 direction = center-transform.position;
 				rbody.AddForce (direction.normalized * cohForce);
+
+				//Entropy Force
+//				Vector3 entropy = Vector3.Cross(alignment, direction);
+//				rbody.AddForce(entropy.normalized * (alignForce/2));
 			}
 			//Setting the current waypoint
 			if(wayPoints.Count > 0 && currWayPoint == null){
@@ -135,6 +145,10 @@ public class FlockBehavior : MonoBehaviour {
 				rbody.AddForce((currWayPoint.transform.position - transform.position).normalized * wayPointForce);
 				if(Vector3.Distance(currWayPoint.transform.position, transform.position) < 20)
 					Destroy(currWayPoint);
+			}
+			//Resetting currDelay
+			if(currDelay >= maxDelay){
+				currDelay = 0;
 			}
 		}
 	}
