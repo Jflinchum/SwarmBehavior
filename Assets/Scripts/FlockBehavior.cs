@@ -31,12 +31,15 @@ public class FlockBehavior : MonoBehaviour {
 	private GameObject currWayPoint = null;
 
 	private Vector3 center = new Vector3(0, 0, 0);
+	private Vector3 alignment = new Vector3(0, 0, 0);
+	private Vector3 cohesion = new Vector3(0, 0, 0);
 	// Use this for initialization
 	void Start () {
 		rbody = transform.GetComponent<Rigidbody> ();
-		rbody.AddForce(new Vector3(Random.Range (-100, 100), Random.Range (-100,100), maxSpeed*10));
+		rbody.AddForce(new Vector3(Random.Range (-3, 3), Random.Range (-3,3), maxSpeed));
 
 		maxDelay = Random.Range (0, maxDelay);
+		currDelay = maxDelay;//Instantly update vectors
 	}
 	
 	// Update is called once per frame
@@ -50,14 +53,14 @@ public class FlockBehavior : MonoBehaviour {
 				inPlace = !inPlace;
 				if(inPlace){
 					//rbody.velocity = new Vector3(0,0,0);
-					cohForce *= 3;
+					cohForce *= 2;
 				}
 				else
-					cohForce /= 3;
+					cohForce /= 2;
 			}
 
 			//Incrementing the delay
-			currDelay += 0.1f * Time.deltaTime;
+			currDelay += 1f * Time.deltaTime;
 
 			//Speed limiter
 			if (rbody.velocity.magnitude >= maxSpeed) {
@@ -73,11 +76,10 @@ public class FlockBehavior : MonoBehaviour {
 
 			//For alignment
 			int alignNeighbors = 0;
-			Vector3 alignment = new Vector3 (0, 0, 0);
+			Vector3 alignmentVect = new Vector3(0, 0, 0);
 
 			//For cohesion
 			int cohNeighbors = 0;
-			Vector3 cohesionPos = new Vector3( 0, 0, 0);
 
 			for (int i = 0; i < neighbors.Length; i++) {
 				if (neighbors [i].tag == "Flock" && !avoiding) {
@@ -92,13 +94,13 @@ public class FlockBehavior : MonoBehaviour {
 					//Alignment update
 					if (flockDist <= alignDist && flockDist > sepDist) {
 						alignNeighbors += 1;
-						alignment += neighbors [i].transform.forward;
+						alignmentVect += neighbors [i].transform.forward;
 					}
 					//Cohesion update
 					if (flockDist <= cohDist && !inPlace) {
 						cohNeighbors += 1;
-						cohesionPos += neighbors[i].transform.position;
-						center = cohesionPos/cohNeighbors;
+						cohesion += neighbors[i].transform.position;
+						center = cohesion/cohNeighbors;
 					}
 				} 
 				else if (neighbors [i].tag == "Avoid") {
@@ -124,17 +126,21 @@ public class FlockBehavior : MonoBehaviour {
 					}
 				}
 			}
+			//Delay for updating the vector
+			if(currDelay >= maxDelay && !inPlace){
+				cohesion = center;
+				alignment = alignmentVect/alignNeighbors;
+				//Entropy Force
+				Vector3 entropy = Vector3.Cross(alignment, center - transform.position);
+				rbody.AddForce(entropy.normalized * (Random.Range (0, alignForce)));
+			}
 			//Alignment Force
 			if(alignNeighbors != 0 && !inPlace)
 				rbody.AddForce (alignment.normalized * alignForce);
 			//Cohesion Force
 			if(cohNeighbors != 0 || inPlace){
-				Vector3 direction = center-transform.position;
+				Vector3 direction = cohesion-transform.position;
 				rbody.AddForce (direction.normalized * cohForce);
-
-				//Entropy Force
-//				Vector3 entropy = Vector3.Cross(alignment, direction);
-//				rbody.AddForce(entropy.normalized * (alignForce/2));
 			}
 			//Setting the current waypoint
 			if(wayPoints.Count > 0 && currWayPoint == null){
@@ -152,11 +158,19 @@ public class FlockBehavior : MonoBehaviour {
 			}
 		}
 	}
+
 	void OnCollisionEnter(Collision collision){
 		if (collision.transform.tag != "Flock") {
 			drop = true;
 			GetComponent<TrailRenderer>().enabled = false;
 			GetComponent<Rigidbody>().useGravity = true;
 		}
+	}
+
+	void OnDrawGizmosSelected(){
+		Gizmos.color = Color.blue;
+		Gizmos.DrawRay (transform.position, cohesion.normalized*cohForce);
+		Gizmos.color = Color.red;
+		Gizmos.DrawRay (transform.position, alignment.normalized*alignForce);
 	}
 }
