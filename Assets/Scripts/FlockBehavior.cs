@@ -3,26 +3,35 @@ using System.Collections;
 
 public class FlockBehavior : MonoBehaviour {
 
+	//The sight range and maximum speed
 	public float sightRad;
 	public float maxSpeed;
 
+	//The various distances to take into account
 	public float avoidDist;
 	public float cohDist;
 	public float alignDist;
-	public float sepDist;
+	public float maxSepDist;
 
+	//The various force strengths
 	public float avoidForce;
 	public float cohForce;
 	public float alignForce;
 	public float sepForce;
 	public float wayPointForce;
 
+	//The delay between updating cohesion and alignment
 	public float maxDelay = 0.5f;
 	private float currDelay = 0.0f;
 
+	private float sepDelay = Random.Range (0, 5);
+
+	//The altitude to stay at NOT YET IMPLEMENTED
 	public float altitude;
 
+	//The rigidbody of this object
 	private Rigidbody rbody;
+	//The several states the object can be in
 	private bool drop = false;
 	private bool avoiding = false;
 	private bool inPlace = false;
@@ -30,6 +39,7 @@ public class FlockBehavior : MonoBehaviour {
 	public Queue wayPoints = new Queue();
 	private GameObject currWayPoint = null;
 
+	//Various vectors for the object
 	private Vector3 center = new Vector3(0, 0, 0);
 	private Vector3 alignment = new Vector3(0, 0, 0);
 	private Vector3 cohesion = new Vector3(0, 0, 0);
@@ -48,6 +58,9 @@ public class FlockBehavior : MonoBehaviour {
 			//Reset avoiding check
 			avoiding = false;
 
+			//Setting a new seperation distance to add variation and entropy to flock
+			float sepDist = maxSepDist*(1+Mathf.Sin ((Time.realtimeSinceStartup+sepDelay)*2*Mathf.PI));
+
 			//Toggling inPlace
 			if(Input.GetKeyDown("space")){
 				inPlace = !inPlace;
@@ -63,9 +76,8 @@ public class FlockBehavior : MonoBehaviour {
 			currDelay += 1f * Time.deltaTime;
 
 			//Speed limiter
-			if (rbody.velocity.magnitude >= maxSpeed) {
+			if (rbody.velocity.magnitude >= maxSpeed) 
 				rbody.velocity = rbody.velocity.normalized * maxSpeed;
-			}
 
 			//Look forward
 			if (rbody.velocity.magnitude != 0)
@@ -89,7 +101,7 @@ public class FlockBehavior : MonoBehaviour {
 
 					//Seperation update
 					if (flockDist <= sepDist) {
-						rbody.AddForce (-flockVector.normalized * sepForce * 1 / ((flockDist + 1) / sepDist));
+						rbody.AddForce (-flockVector.normalized * sepForce);
 					}
 					//Alignment update
 					if (flockDist <= alignDist && flockDist > sepDist) {
