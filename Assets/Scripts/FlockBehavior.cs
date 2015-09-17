@@ -36,8 +36,11 @@ public class FlockBehavior : MonoBehaviour {
 	private bool avoiding = false;
 	private bool inPlace = false;
 
+	//The queue of waypoints
 	public Queue wayPoints = new Queue();
 	private GameObject currWayPoint = null;
+
+	public Collider[] neighbors;
 
 	//Various vectors for the object
 	private Vector3 center = new Vector3(0, 0, 0);
@@ -64,12 +67,11 @@ public class FlockBehavior : MonoBehaviour {
 			//Toggling inPlace
 			if(Input.GetKeyDown("space")){
 				inPlace = !inPlace;
-				if(inPlace){
-					//rbody.velocity = new Vector3(0,0,0);
-					cohForce *= 2;
-				}
+				rbody.velocity = rbody.velocity.normalized * maxSpeed/2;
+				if(inPlace)
+					cohForce*=2;
 				else
-					cohForce /= 2;
+					cohForce/=2;
 			}
 
 			//Incrementing the delay
@@ -84,7 +86,7 @@ public class FlockBehavior : MonoBehaviour {
 				transform.rotation = Quaternion.LookRotation (rbody.velocity);
 
 			//All of the objects found within the sight range
-			Collider[] neighbors = Physics.OverlapSphere (transform.position, sightRad);
+			neighbors = Physics.OverlapSphere (transform.position, sightRad);
 
 			//For alignment
 			int alignNeighbors = 0;
@@ -92,6 +94,9 @@ public class FlockBehavior : MonoBehaviour {
 
 			//For cohesion
 			int cohNeighbors = 0;
+
+			//For seperation
+			Vector3 sepVect = new Vector3(0,0,0);
 
 			for (int i = 0; i < neighbors.Length; i++) {
 				if (neighbors [i].tag == "Flock" && !avoiding) {
@@ -101,7 +106,7 @@ public class FlockBehavior : MonoBehaviour {
 
 					//Seperation update
 					if (flockDist <= sepDist) {
-						rbody.AddForce (-flockVector.normalized * sepForce);
+						sepVect -= flockVector;
 					}
 					//Alignment update
 					if (flockDist <= alignDist && flockDist > sepDist) {
@@ -154,10 +159,15 @@ public class FlockBehavior : MonoBehaviour {
 				Vector3 direction = cohesion-transform.position;
 				rbody.AddForce (direction.normalized * cohForce);
 			}
+			//Seperation Force
+			if(alignNeighbors != 0)
+				rbody.AddForce (sepVect.normalized*sepForce);
+
 			//Setting the current waypoint
 			if(wayPoints.Count > 0 && currWayPoint == null){
 				currWayPoint = (GameObject)wayPoints.Dequeue();
 			}
+
 			//Going towards waypoint
 			if(currWayPoint != null && !inPlace){
 				rbody.AddForce((currWayPoint.transform.position - transform.position).normalized * wayPointForce);
@@ -179,10 +189,17 @@ public class FlockBehavior : MonoBehaviour {
 		}
 	}
 
-	void OnDrawGizmosSelected(){
+	void OnDrawGizmos(){
 		Gizmos.color = Color.blue;
 		Gizmos.DrawRay (transform.position, cohesion.normalized*cohForce);
 		Gizmos.color = Color.red;
 		Gizmos.DrawRay (transform.position, alignment.normalized*alignForce);
+		Gizmos.color = Color.gray;
+		Gizmos.DrawWireSphere (transform.position, cohDist);
+	}
+
+	void OnDrawGizmosSelected(){
+		Gizmos.color = Color.red;
+		Gizmos.DrawWireSphere (transform.position, cohDist);
 	}
 }
