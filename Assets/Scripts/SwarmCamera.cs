@@ -23,8 +23,8 @@ public class SwarmCamera : MonoBehaviour {
 	void Start () {
 		if (spawner != null) {
 			targets = spawner.GetComponent<Spawner>().objects;
+			target = targets [0];
 		}
-		target = targets[0];
 		if(target != null)
 			transform.SetParent (target.transform);
 
@@ -38,7 +38,7 @@ public class SwarmCamera : MonoBehaviour {
 			index += 1;
 			if(index >= targets.Length)
 				index = 0;
-			target = targets[index];
+			target = (GameObject)targets[index];
 			transform.SetParent (target.transform);
 		}
 		if (target != null) {

@@ -41,6 +41,8 @@ public class FlockBehavior : MonoBehaviour {
 	private GameObject currWayPoint = null;
 
 	public Collider[] neighbors;
+	//Used for Debugging
+	private Vector3 splitPointDebug;
 
 	//Various vectors for the object
 	private Vector3 center = new Vector3(0, 0, 0);
@@ -126,20 +128,31 @@ public class FlockBehavior : MonoBehaviour {
 					if (objDist <= avoidDist)
 						rbody.AddForce (avoidDirect.normalized * avoidForce);
 					avoiding = true;
+
 				}
 				//Going around untagged objects
 				else {
-					if(Physics.CheckCapsule(transform.position, transform.position + transform.forward*avoidDist, 2*GetComponent<SphereCollider>().radius + avoidDist)){
-						Vector3 closestPos = neighbors[i].bounds.ClosestPoint(transform.position);
-						Vector3 toCenter = neighbors[i].transform.position - transform.position;
-						Vector3 direction = toCenter - closestPos;
-
-						if(Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
-							direction = new Vector3(-direction.x - (Mathf.Sign (direction.x) * (neighbors[i].bounds.size.x + avoidDist)), direction.y, direction.z).normalized * avoidForce;
-						else
-							direction = new Vector3(direction.x, -direction.y - ( Mathf.Sign (direction.y) * (neighbors[i].bounds.size.y + avoidDist)), direction.z).normalized * avoidForce;
-						avoiding = true;
-						rbody.AddForce(direction);
+					if(Physics.CheckSphere(transform.position, 2*GetComponent<SphereCollider>().radius + avoidDist)){
+//						Vector3 closestPos = neighbors[i].bounds.ClosestPoint(transform.position);
+//						Vector3 toCenter = neighbors[i].transform.position - transform.position;
+//						Vector3 direction = toCenter - closestPos;
+//
+//						if(Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
+//							direction = new Vector3(-direction.x - (Mathf.Sign (direction.x) * (neighbors[i].bounds.size.x + avoidDist)), direction.y, direction.z).normalized * avoidForce;
+//						else
+//							direction = new Vector3(direction.x, -direction.y - ( Mathf.Sign (direction.y) * (neighbors[i].bounds.size.y + avoidDist)), direction.z).normalized * avoidForce;
+//						avoiding = true;
+//						rbody.AddForce(direction);
+						Vector3 closestPoint = neighbors[i].ClosestPointOnBounds(transform.position);
+						if(currWayPoint!=null){
+							Vector3 splitPoint = 2*(neighbors[i].transform.position - neighbors[i].ClosestPointOnBounds(currWayPoint.transform.position)) + neighbors[i].transform.position;
+							splitPointDebug = splitPoint;
+							Vector3 direction = (closestPoint-splitPoint).normalized;
+							if(!Physics.Raycast(splitPoint, closestPoint, (splitPoint-closestPoint).magnitude, 2)){
+								rbody.AddForce(direction*avoidForce);
+							}
+						}
+						rbody.AddForce((transform.position-closestPoint).normalized * avoidForce*20/(2*(transform.position-closestPoint).magnitude+1));
 					}
 				}
 			}
@@ -154,10 +167,13 @@ public class FlockBehavior : MonoBehaviour {
 			//Alignment Force
 			if(alignNeighbors != 0 && !inPlace)
 				rbody.AddForce (alignment.normalized * alignForce);
+
 			//Cohesion Force
 			if(cohNeighbors != 0 || inPlace){
 				Vector3 direction = cohesion-transform.position;
-				rbody.AddForce (direction.normalized * cohForce);
+				if(direction.magnitude >= cohForce)
+					direction = direction.normalized*cohForce;
+				rbody.AddForce (direction);
 			}
 			//Seperation Force
 			if(alignNeighbors != 0)
@@ -196,6 +212,8 @@ public class FlockBehavior : MonoBehaviour {
 		Gizmos.DrawRay (transform.position, alignment.normalized*alignForce);
 		Gizmos.color = Color.gray;
 		Gizmos.DrawWireSphere (transform.position, cohDist);
+		Gizmos.color = Color.green;
+		Gizmos.DrawCube (splitPointDebug, new Vector3(20,20,20));
 	}
 
 	void OnDrawGizmosSelected(){
