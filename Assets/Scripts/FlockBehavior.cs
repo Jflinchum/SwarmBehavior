@@ -29,6 +29,8 @@ public class FlockBehavior : MonoBehaviour {
 	//The altitude to stay at NOT YET IMPLEMENTED
 	public float altitude;
 
+	public bool shielded = false;
+
 	//The rigidbody of this object
 	private Rigidbody rbody;
 	//The several states the object can be in
@@ -133,16 +135,6 @@ public class FlockBehavior : MonoBehaviour {
 				//Going around untagged objects
 				else {
 					if(Physics.CheckSphere(transform.position, 2*GetComponent<SphereCollider>().radius + avoidDist)){
-//						Vector3 closestPos = neighbors[i].bounds.ClosestPoint(transform.position);
-//						Vector3 toCenter = neighbors[i].transform.position - transform.position;
-//						Vector3 direction = toCenter - closestPos;
-//
-//						if(Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
-//							direction = new Vector3(-direction.x - (Mathf.Sign (direction.x) * (neighbors[i].bounds.size.x + avoidDist)), direction.y, direction.z).normalized * avoidForce;
-//						else
-//							direction = new Vector3(direction.x, -direction.y - ( Mathf.Sign (direction.y) * (neighbors[i].bounds.size.y + avoidDist)), direction.z).normalized * avoidForce;
-//						avoiding = true;
-//						rbody.AddForce(direction);
 						Vector3 closestPoint = neighbors[i].ClosestPointOnBounds(transform.position);
 						if(currWayPoint!=null){
 							Vector3 splitPoint = 2*(neighbors[i].transform.position - neighbors[i].ClosestPointOnBounds(currWayPoint.transform.position)) + neighbors[i].transform.position;
@@ -152,7 +144,7 @@ public class FlockBehavior : MonoBehaviour {
 								rbody.AddForce(direction*avoidForce);
 							}
 						}
-						rbody.AddForce((transform.position-closestPoint).normalized * avoidForce*20/(2*(transform.position-closestPoint).magnitude+1));
+						rbody.AddForce((transform.position-closestPoint).normalized * avoidForce*20/(0.7f*(transform.position-closestPoint).magnitude+1));
 					}
 				}
 			}
