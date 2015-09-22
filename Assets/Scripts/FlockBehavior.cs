@@ -50,6 +50,8 @@ public class FlockBehavior : MonoBehaviour {
 	private Vector3 alignment = new Vector3(0, 0, 0);
 	private Vector3 cohesion = new Vector3(0, 0, 0);
 
+	public GameObject leader;
+
 	// Use this for initialization
 	void Start () {
 		rbody = transform.GetComponent<Rigidbody> ();
@@ -85,6 +87,7 @@ public class FlockBehavior : MonoBehaviour {
 			if (rbody.velocity.magnitude >= maxSpeed) 
 				rbody.velocity = rbody.velocity.normalized * maxSpeed;
 
+
 			//Look forward
 			if (rbody.velocity.magnitude != 0)
 				transform.rotation = Quaternion.LookRotation (rbody.velocity);
@@ -101,6 +104,12 @@ public class FlockBehavior : MonoBehaviour {
 
 			//For seperation
 			Vector3 sepVect = new Vector3(0,0,0);
+
+			//Changing the name of the leader and flock members 
+			if(leader == gameObject && gameObject.name != "Leader")
+				gameObject.name = "Leader";
+			else if(leader != gameObject && gameObject.name != "Flock (Clone)")
+				gameObject.name = "Flock (Clone)";
 
 			for (int i = 0; i < neighbors.Length; i++) {
 				//For objects tagged as avoid, apply a strong normal force away from that object
@@ -157,11 +166,14 @@ public class FlockBehavior : MonoBehaviour {
 
 			//Delay for updating the vector
 			if(currDelay >= maxDelay && !inPlace){
+				leader = FindLeader(neighbors.Length*3);
 				cohesion = center;
 				alignment = alignmentVect/alignNeighbors;
 				//Entropy Force
 				Vector3 entropy = Vector3.Cross(alignment, center - transform.position);
 				rbody.AddForce(entropy.normalized * (Random.Range (0, alignForce)));
+
+				rbody.AddForce((leader.transform.position - transform.position).normalized * cohForce/4);
 			}
 
 			//Alignment Force
@@ -194,6 +206,24 @@ public class FlockBehavior : MonoBehaviour {
 				currDelay = 0;
 		}
 	}
+
+	//Finding the current leader which is the flock member closest to the alignment of everyone
+	//int attempts = number of attempts to go through before settling on a leader
+	GameObject FindLeader(int attempts){
+		GameObject newLeader = gameObject;
+		float leaderDist = Vector3.Distance (transform.forward*alignForce, newLeader.transform.position);
+		for (int i = 0; i < neighbors.Length; i ++) {
+			if(leaderDist < Vector3.Distance(transform.forward*alignForce, neighbors[i].transform.position)){
+				newLeader = neighbors[i].gameObject;
+				leaderDist = Vector3.Distance(transform.forward*alignForce, newLeader.transform.position);
+			}
+		}
+		if (newLeader == gameObject || attempts == 0) 
+			return gameObject;
+		else 
+			return newLeader.GetComponent<FlockBehavior> ().FindLeader (attempts-1);
+	}
+
 	//If it collides with something not with the flock, have it drop and deactivate it's trail
 	void OnCollisionEnter(Collision collision){
 		if (collision.transform.tag != "Flock") {
@@ -205,14 +235,15 @@ public class FlockBehavior : MonoBehaviour {
 	//Debugging for showing the cohesion vector, alignment vector, the sight radius, and the splitpoint position
 	//Going around objects
 	void OnDrawGizmos(){
-		Gizmos.color = Color.blue;
-		Gizmos.DrawRay (transform.position, cohesion.normalized*cohForce);
 		Gizmos.color = Color.red;
 		Gizmos.DrawRay (transform.position, alignment.normalized*alignForce);
+		if (leader == gameObject)
+			Gizmos.DrawSphere (transform.position, 1);
 		Gizmos.color = Color.gray;
 		Gizmos.DrawWireSphere (transform.position, sightRad);
 		Gizmos.color = Color.green;
 		Gizmos.DrawCube (splitPointDebug, new Vector3(20,20,20));
+
 	}
 	//When the object is selected, it shows their own sight radius in red to easily show it
 	void OnDrawGizmosSelected(){
