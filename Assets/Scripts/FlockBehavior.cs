@@ -23,16 +23,14 @@ public class FlockBehavior : MonoBehaviour {
 	//The delay between updating cohesion and alignment
 	public float maxDelay = 0.5f;
 	private float currDelay = 0.0f;
-
 	private float sepDelay = Random.Range (0, 5);
 
-	//The altitude to stay at NOT YET IMPLEMENTED
-	public float altitude;
-
+	//Whether or not this flock object is shielded
 	public bool shielded = false;
 
 	//The rigidbody of this object
 	private Rigidbody rbody;
+
 	//The several states the object can be in
 	private bool drop = false;
 	private bool avoiding = false;
@@ -42,6 +40,7 @@ public class FlockBehavior : MonoBehaviour {
 	public Queue wayPoints = new Queue();
 	private GameObject currWayPoint = null;
 
+	//The array of neighbors
 	public Collider[] neighbors;
 	//Used for Debugging
 	private Vector3 splitPointDebug;
@@ -50,6 +49,7 @@ public class FlockBehavior : MonoBehaviour {
 	private Vector3 center = new Vector3(0, 0, 0);
 	private Vector3 alignment = new Vector3(0, 0, 0);
 	private Vector3 cohesion = new Vector3(0, 0, 0);
+
 	// Use this for initialization
 	void Start () {
 		rbody = transform.GetComponent<Rigidbody> ();
@@ -73,9 +73,9 @@ public class FlockBehavior : MonoBehaviour {
 				inPlace = !inPlace;
 				rbody.velocity = rbody.velocity.normalized * maxSpeed/2;
 				if(inPlace)
-					cohForce*=2;
+					cohForce*=3;
 				else
-					cohForce/=2;
+					cohForce/=3;
 			}
 
 			//Incrementing the delay
@@ -103,15 +103,26 @@ public class FlockBehavior : MonoBehaviour {
 			Vector3 sepVect = new Vector3(0,0,0);
 
 			for (int i = 0; i < neighbors.Length; i++) {
-				if (neighbors [i].tag == "Flock" && !avoiding) {
+				//For objects tagged as avoid, apply a strong normal force away from that object
+				if (neighbors [i].tag == "Avoid") {
+					Vector3 avoidDirect = neighbors[i].ClosestPointOnBounds(transform.position) - transform.position;
+					float objDist = avoidDirect.magnitude;
+					if (objDist <= avoidDist)
+						rbody.AddForce (avoidDirect.normalized * avoidForce);
+					avoiding = true;
+					
+				}
+
+				//All factors for reactions to flock
+				else if (neighbors [i].tag == "Flock" && !avoiding) {
 					//The vector and distance to the object
 					Vector3 flockVector = neighbors [i].transform.position - transform.position;
 					float flockDist = Vector3.Distance (neighbors [i].transform.position, transform.position);
 
 					//Seperation update
-					if (flockDist <= sepDist) {
+					if (flockDist <= sepDist) 
 						sepVect -= flockVector;
-					}
+
 					//Alignment update
 					if (flockDist <= alignDist && flockDist > sepDist) {
 						alignNeighbors += 1;
@@ -123,19 +134,13 @@ public class FlockBehavior : MonoBehaviour {
 						cohesion += neighbors[i].transform.position;
 						center = cohesion/cohNeighbors;
 					}
-				} 
-				else if (neighbors [i].tag == "Avoid") {
-					Vector3 avoidDirect = transform.position - neighbors [i].transform.position;
-					float objDist = Vector3.Distance (neighbors [i].transform.position, transform.position);
-					if (objDist <= avoidDist)
-						rbody.AddForce (avoidDirect.normalized * avoidForce);
-					avoiding = true;
-
 				}
+
 				//Going around untagged objects
 				else {
 					if(Physics.CheckSphere(transform.position, 2*GetComponent<SphereCollider>().radius + avoidDist)){
 						Vector3 closestPoint = neighbors[i].ClosestPointOnBounds(transform.position);
+						//If it has a waypoint
 						if(currWayPoint!=null){
 							Vector3 splitPoint = 2*(neighbors[i].transform.position - neighbors[i].ClosestPointOnBounds(currWayPoint.transform.position)) + neighbors[i].transform.position;
 							splitPointDebug = splitPoint;
@@ -144,10 +149,12 @@ public class FlockBehavior : MonoBehaviour {
 								rbody.AddForce(direction*avoidForce);
 							}
 						}
+						//Applying a force away from object
 						rbody.AddForce((transform.position-closestPoint).normalized * avoidForce*20/(0.7f*(transform.position-closestPoint).magnitude+1));
 					}
 				}
 			}
+
 			//Delay for updating the vector
 			if(currDelay >= maxDelay && !inPlace){
 				cohesion = center;
@@ -156,6 +163,7 @@ public class FlockBehavior : MonoBehaviour {
 				Vector3 entropy = Vector3.Cross(alignment, center - transform.position);
 				rbody.AddForce(entropy.normalized * (Random.Range (0, alignForce)));
 			}
+
 			//Alignment Force
 			if(alignNeighbors != 0 && !inPlace)
 				rbody.AddForce (alignment.normalized * alignForce);
@@ -172,9 +180,8 @@ public class FlockBehavior : MonoBehaviour {
 				rbody.AddForce (sepVect.normalized*sepForce);
 
 			//Setting the current waypoint
-			if(wayPoints.Count > 0 && currWayPoint == null){
+			if(wayPoints.Count > 0 && currWayPoint == null)
 				currWayPoint = (GameObject)wayPoints.Dequeue();
-			}
 
 			//Going towards waypoint
 			if(currWayPoint != null && !inPlace){
@@ -183,12 +190,11 @@ public class FlockBehavior : MonoBehaviour {
 					Destroy(currWayPoint);
 			}
 			//Resetting currDelay
-			if(currDelay >= maxDelay){
+			if(currDelay >= maxDelay)
 				currDelay = 0;
-			}
 		}
 	}
-
+	//If it collides with something not with the flock, have it drop and deactivate it's trail
 	void OnCollisionEnter(Collision collision){
 		if (collision.transform.tag != "Flock") {
 			drop = true;
@@ -196,20 +202,21 @@ public class FlockBehavior : MonoBehaviour {
 			GetComponent<Rigidbody>().useGravity = true;
 		}
 	}
-
+	//Debugging for showing the cohesion vector, alignment vector, the sight radius, and the splitpoint position
+	//Going around objects
 	void OnDrawGizmos(){
 		Gizmos.color = Color.blue;
 		Gizmos.DrawRay (transform.position, cohesion.normalized*cohForce);
 		Gizmos.color = Color.red;
 		Gizmos.DrawRay (transform.position, alignment.normalized*alignForce);
 		Gizmos.color = Color.gray;
-		Gizmos.DrawWireSphere (transform.position, cohDist);
+		Gizmos.DrawWireSphere (transform.position, sightRad);
 		Gizmos.color = Color.green;
 		Gizmos.DrawCube (splitPointDebug, new Vector3(20,20,20));
 	}
-
+	//When the object is selected, it shows their own sight radius in red to easily show it
 	void OnDrawGizmosSelected(){
 		Gizmos.color = Color.red;
-		Gizmos.DrawWireSphere (transform.position, cohDist);
+		Gizmos.DrawWireSphere (transform.position, sightRad);
 	}
 }

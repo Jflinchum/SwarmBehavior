@@ -1,10 +1,11 @@
 fileFormatVersion: 2
 guid: b560f42ef9044424fa73535a63ec694d
-timeCreated: 1440030445
+timeCreated: 1442635660
 licenseType: Free
 MonoImporter:
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - wayPoint: {fileID: 118146, guid: d579ad29953bede4e931bdc6e5eede6b, type: 2}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
